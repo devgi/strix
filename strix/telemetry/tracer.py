@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 from uuid import uuid4
+from strix.checkpoint.models import TracerCheckpointInfo
 
 
 if TYPE_CHECKING:
@@ -321,3 +322,19 @@ class Tracer:
 
     def cleanup(self) -> None:
         self.save_run_data()
+
+    def record_state_to_checkpoint(self) -> TracerCheckpointInfo:
+        return TracerCheckpointInfo(
+            agents=self.agents,
+            tool_executions=self.tool_executions,
+            chat_messages=self.chat_messages,
+        )
+    
+    def restore_state_from_checkpoint(self, tracer_checkpoint_info: TracerCheckpointInfo) -> None:
+        for agent_id, agent_data in tracer_checkpoint_info.agents.items():
+            agent_data["name"] = f"{agent_data['name']} [Restored]"
+            self.agents[agent_id] = agent_data
+
+        self.tool_executions = tracer_checkpoint_info.tool_executions
+        self.chat_messages = tracer_checkpoint_info.chat_messages
+
