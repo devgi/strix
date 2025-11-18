@@ -8,6 +8,7 @@ from strix.checkpoint.models import StrixExecutionCheckpoint, CheckpointVersionI
 from strix.telemetry import get_global_tracer
 from strix.checkpoint.store import CheckpointStore
 from strix.checkpoint.file_store import CheckpointFileStore
+from strix.checkpoint.sqlite_store import CheckpointSQLiteStore
 
 if TYPE_CHECKING:
     from strix.telemetry.tracer import Tracer
@@ -15,6 +16,7 @@ if TYPE_CHECKING:
 
 _resumed_execution : StrixExecutionCheckpoint | None = None
 _active_checkpoint_store : CheckpointStore | None = None
+_active_checkpoint_path: Path | None = None
 
 def resume_checkpoint(checkpoint_file_path: str) -> StrixExecutionCheckpoint:
     """
@@ -22,7 +24,7 @@ def resume_checkpoint(checkpoint_file_path: str) -> StrixExecutionCheckpoint:
     This should be called before any other resume function in this module.
     """
     global _resumed_execution
-    _resumed_execution = CheckpointFileStore(Path(checkpoint_file_path)).load()
+    _resumed_execution = CheckpointSQLiteStore(Path(checkpoint_file_path)).load()
     if not _resumed_execution:
         raise RuntimeError(f"Failed to load checkpoint from file: {checkpoint_file_path}")
 
@@ -59,10 +61,17 @@ def resume_root_agent_state_from_checkpoint() -> AgentState:
 
 def initialize_execution_recording(results_dir: Path, run_name: str) -> None:
     global _active_checkpoint_store
+    global _active_checkpoint_path
     version_info = CheckpointVersionInfo(strix_version=version("strix-agent"), run_name=run_name, checkpoint_id=str(uuid.uuid4()))
 
-    _active_checkpoint_store = CheckpointFileStore(results_dir / ".strix_checkpoint.db")
+    checkpoint_path = results_dir / "strix_checkpoint.db"
+    _active_checkpoint_store = CheckpointSQLiteStore(checkpoint_path)
     _active_checkpoint_store.store_version_info(version_info)
+    _active_checkpoint_path = checkpoint_path
+
+def get_active_checkpoint_path() -> Optional[Path]:
+    global _active_checkpoint_path
+    return _active_checkpoint_path
 
 
 async def record_execution_checkpoint(agent_checkpoint_info: AgentCheckpointInfo) -> None:

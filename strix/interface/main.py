@@ -34,7 +34,7 @@ from strix.interface.utils import (
 )
 from strix.runtime.docker_runtime import STRIX_IMAGE
 from strix.telemetry.tracer import get_global_tracer
-from strix.checkpoint.manager import resume_checkpoint, initialize_execution_recording
+from strix.checkpoint.manager import get_active_checkpoint_path, resume_checkpoint, initialize_execution_recording
 
 
 logging.getLogger().setLevel(logging.ERROR)
@@ -389,6 +389,13 @@ def display_completion_message(args: argparse.Namespace, results_path: Path) -> 
         results_text.append("📊 Results Saved To: ", style="bold cyan")
         results_text.append(str(results_path), style="bold yellow")
         panel_parts.extend(["\n\n", results_text])
+
+    checkpoint_path = get_active_checkpoint_path()
+    if checkpoint_path:
+        checkpoint_text = Text()
+        checkpoint_text.append("📀 Execution Checkpoint: ", style="bold yellow")
+        checkpoint_text.append(str(checkpoint_path), style="bold white")
+        panel_parts.extend(["\n", checkpoint_text])
 
     panel_content = Text.assemble(*panel_parts)
 
