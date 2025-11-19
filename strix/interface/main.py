@@ -34,6 +34,7 @@ from strix.interface.utils import (
 )
 from strix.runtime.docker_runtime import STRIX_IMAGE
 from strix.telemetry.tracer import get_global_tracer
+from strix.checkpoint.manager import get_active_checkpoint_path, resume_checkpoint, initialize_execution_recording
 
 
 logging.getLogger().setLevel(logging.ERROR)
@@ -307,6 +308,12 @@ Examples:
             "Default is interactive mode with TUI."
         ),
     )
+    parser.add_argument(
+        "--resume",
+        type=str,
+        metavar="CHECKPOINT_FILE",
+        help="Resume a previous scan by providing the path to strix checkpoint file",
+    )
 
     args = parser.parse_args()
 
@@ -382,6 +389,13 @@ def display_completion_message(args: argparse.Namespace, results_path: Path) -> 
         results_text.append("📊 Results Saved To: ", style="bold cyan")
         results_text.append(str(results_path), style="bold yellow")
         panel_parts.extend(["\n\n", results_text])
+
+    checkpoint_path = get_active_checkpoint_path()
+    if checkpoint_path:
+        checkpoint_text = Text()
+        checkpoint_text.append("📀 Execution Checkpoint: ", style="bold yellow")
+        checkpoint_text.append(str(checkpoint_path), style="bold white")
+        panel_parts.extend(["\n", checkpoint_text])
 
     panel_content = Text.assemble(*panel_parts)
 
@@ -470,12 +484,18 @@ def main() -> None:
 
     args.local_sources = collect_local_sources(args.targets_info)
 
+    if args.resume:
+        resume_checkpoint(args.resume)
+
+    results_path = Path("agent_runs") / args.run_name
+    initialize_execution_recording(results_dir=results_path, run_name=args.run_name)
+
     if args.non_interactive:
         asyncio.run(run_cli(args))
     else:
         asyncio.run(run_tui(args))
 
-    results_path = Path("agent_runs") / args.run_name
+    
     display_completion_message(args, results_path)
 
     if args.non_interactive:

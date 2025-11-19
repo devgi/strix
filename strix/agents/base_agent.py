@@ -351,6 +351,7 @@ class BaseAgent(metaclass=AgentMeta):
         self.state.add_message("user", task)
 
     async def _process_iteration(self, tracer: Optional["Tracer"]) -> bool:
+        await self._record_agent_checkpoint()
         response = await self.llm.generate(self.state.get_conversation_history())
 
         content_stripped = (response.content or "").strip()
@@ -516,3 +517,18 @@ class BaseAgent(metaclass=AgentMeta):
             logger = logging.getLogger(__name__)
             logger.warning(f"Error checking agent messages: {e}")
             return
+
+    async def _record_agent_checkpoint(self):
+        from strix.checkpoint.models import AgentCheckpointInfo
+        from strix.checkpoint.manager import record_execution_checkpoint
+        from strix.tools.agents_graph.agents_graph_actions import _agent_messages, _root_agent_id
+
+
+        checkpoint_info = AgentCheckpointInfo(
+            agent_state=self.state, 
+            prompt_modules=self.llm_config.prompt_modules,
+            pending_agent_messages=_agent_messages,
+            is_root_agent=(self.state.agent_id == _root_agent_id)
+        )
+
+        await record_execution_checkpoint(checkpoint_info)

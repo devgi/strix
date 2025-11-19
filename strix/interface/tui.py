@@ -33,6 +33,7 @@ from textual.widgets.tree import TreeNode
 from strix.agents.StrixAgent import StrixAgent
 from strix.llm.config import LLMConfig
 from strix.telemetry.tracer import Tracer, set_global_tracer
+from strix.checkpoint.manager import resume_tracer, resume_root_agent_state_from_checkpoint
 
 
 def escape_markup(text: str) -> str:
@@ -280,6 +281,9 @@ class StrixTUIApp(App):  # type: ignore[misc]
         self.agent_config = self._build_agent_config(args)
 
         self.tracer = Tracer(self.scan_config["run_name"])
+        if args.resume:
+            resume_tracer(self.tracer)
+            
         self.tracer.set_scan_config(self.scan_config)
         set_global_tracer(self.tracer)
 
@@ -320,13 +324,16 @@ class StrixTUIApp(App):  # type: ignore[misc]
     def _build_agent_config(self, args: argparse.Namespace) -> dict[str, Any]:
         llm_config = LLMConfig()
 
-        config = {
+        config: dict[str, Any] = {
             "llm_config": llm_config,
             "max_iterations": 300,
         }
 
         if getattr(args, "local_sources", None):
             config["local_sources"] = args.local_sources
+        
+        if args.resume:
+            config["state"] = resume_root_agent_state_from_checkpoint()
 
         return config
 

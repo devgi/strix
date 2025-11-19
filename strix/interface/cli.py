@@ -10,6 +10,7 @@ from rich.text import Text
 from strix.agents.StrixAgent import StrixAgent
 from strix.llm.config import LLMConfig
 from strix.telemetry.tracer import Tracer, set_global_tracer
+from strix.checkpoint.manager import resume_tracer, resume_root_agent_state_from_checkpoint
 
 from .utils import get_severity_color
 
@@ -71,7 +72,7 @@ async def run_cli(args: Any) -> None:  # noqa: PLR0915
     }
 
     llm_config = LLMConfig()
-    agent_config = {
+    agent_config: dict[str, Any] = {
         "llm_config": llm_config,
         "max_iterations": 300,
         "non_interactive": True,
@@ -81,6 +82,10 @@ async def run_cli(args: Any) -> None:  # noqa: PLR0915
         agent_config["local_sources"] = args.local_sources
 
     tracer = Tracer(args.run_name)
+    if args.resume:
+        resume_tracer(tracer)
+        agent_config["state"] = resume_root_agent_state_from_checkpoint()
+
     tracer.set_scan_config(scan_config)
 
     def display_vulnerability(report_id: str, title: str, content: str, severity: str) -> None:

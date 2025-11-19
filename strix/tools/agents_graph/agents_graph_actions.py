@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 
 from strix.tools.registry import register_tool
+from strix.checkpoint.models import StrixExecutionCheckpoint
 
 
 _agent_graph: dict[str, Any] = {
@@ -619,3 +620,8 @@ def wait_for_message(
                 "Waiting timeout reached",
             ],
         }
+
+
+def resume_execution_from_checkpoint(checkpoint: StrixExecutionCheckpoint) -> dict[str, Any]:
+    # HERE we should initialize and start all strix subagents 
+    pass
